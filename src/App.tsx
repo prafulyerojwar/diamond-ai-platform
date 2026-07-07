@@ -8,6 +8,7 @@ import GalleryPage from './pages/GalleryPage'
 import ValuationPage from './pages/ValuationPage'
 import HistoryPage from './pages/HistoryPage'
 import DesignerPage from './pages/DesignerPage'
+import ComparePage from './pages/ComparePage'
 import './index.css'
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="/valuation" element={<ValuationPage />} />
               <Route path="/history"   element={<HistoryPage />} />
               <Route path="/designer"  element={<DesignerPage />} />
+              <Route path="/compare"   element={<ComparePage />} />
             </Routes>
           </main>
         </div>

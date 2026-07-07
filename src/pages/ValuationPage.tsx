@@ -1,249 +1,263 @@
-import { useState, useMemo } from 'react'
-import { Calculator, Info } from 'lucide-react'
+import { useMemo } from 'react'
+import { useState } from 'react'
+import { Info, TrendingUp } from 'lucide-react'
 import { CUT_GRADES, COLOR_GRADES, CLARITY_GRADES, PRICING_GUIDE, VALUE_FACTORS } from '../data/diamonds'
 
-const CUT_MULT:   Record<string,number> = { Ideal:1.3, Excellent:1.2, 'Very Good':1.0, Good:0.85, Fair:0.7, Poor:0.55 }
-const COLOR_MULT: Record<string,number> = { D:1.5, E:1.35, F:1.2, G:1.1, H:1.0, I:0.9, J:0.8, K:0.7, L:0.6, M:0.5 }
-const CLARITY_MULT: Record<string,number> = { FL:1.6, IF:1.5, VVS1:1.35, VVS2:1.25, VS1:1.15, VS2:1.05, SI1:0.9, SI2:0.78, I1:0.6, I2:0.45, I3:0.35 }
-const BASE_PPC = 4500 // base price per carat in USD
+const CUT_MULT:     Record<string, number> = { Ideal: 1.30, Excellent: 1.20, 'Very Good': 1.00, Good: 0.85, Fair: 0.70, Poor: 0.55 }
+const COLOR_MULT:   Record<string, number> = { D: 1.50, E: 1.35, F: 1.20, G: 1.10, H: 1.00, I: 0.90, J: 0.80, K: 0.70, L: 0.60, M: 0.50 }
+const CLARITY_MULT: Record<string, number> = { FL: 1.60, IF: 1.50, VVS1: 1.35, VVS2: 1.25, VS1: 1.15, VS2: 1.05, SI1: 0.90, SI2: 0.78, I1: 0.60, I2: 0.45, I3: 0.35 }
+const SHAPE_MULT:   Record<string, number> = { Round: 1.10, Princess: 1.00, Oval: 1.05, Emerald: 0.95, Pear: 1.02, Cushion: 1.00, Heart: 1.03, Marquise: 0.98, Asscher: 0.97, Radiant: 1.00 }
+const BASE_PPC = 4500
 
-function calcValue(carats: number, cut: string, color: string, clarity: string) {
-  const cm = CUT_MULT[cut] ?? 1
-  const colm = COLOR_MULT[color] ?? 1
-  const clm = CLARITY_MULT[clarity] ?? 1
-  const magicBonus = carats >= 2 ? 1.4 : carats >= 1.5 ? 1.25 : carats >= 1 ? 1.15 : carats >= 0.5 ? 1.05 : 1
-  const ppc = BASE_PPC * cm * colm * clm * magicBonus
-  const base = ppc * carats
-  return { ppc: Math.round(ppc), total: Math.round(base), low: Math.round(base * 0.85), high: Math.round(base * 1.25) }
+function calcValue(carats: number, cut: string, color: string, clarity: string, shape: string) {
+  const cm  = CUT_MULT[cut]       ?? 1.0
+  const clm = COLOR_MULT[color]   ?? 1.0
+  const crm = CLARITY_MULT[clarity] ?? 1.0
+  const shm = SHAPE_MULT[shape]   ?? 1.0
+  const magic = carats >= 2 ? 1.40 : carats >= 1.5 ? 1.25 : carats >= 1 ? 1.15 : carats >= 0.5 ? 1.05 : 1.0
+  const ppc = BASE_PPC * cm * clm * crm * shm * magic
+  const total = ppc * carats
+  return { ppc: Math.round(ppc), total: Math.round(total), low: Math.round(total * 0.85), high: Math.round(total * 1.25) }
 }
 
+const CURRENCIES = [
+  { code: 'USD', sym: '$',  rate: 1 },
+  { code: 'INR', sym: '₹',  rate: 83.5 },
+  { code: 'EUR', sym: '€',  rate: 0.92 },
+  { code: 'GBP', sym: '£',  rate: 0.79 },
+  { code: 'AED', sym: 'د.إ',rate: 3.67 },
+]
+const SHAPES = ['Round', 'Princess', 'Oval', 'Emerald', 'Pear', 'Cushion', 'Heart', 'Marquise', 'Asscher', 'Radiant']
+const PRESET_CARATS = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0]
+
 export default function ValuationPage() {
-  const [carats, setCarats] = useState(1.0)
-  const [cut, setCut] = useState('Excellent')
-  const [color, setColor] = useState('G')
-  const [clarity, setClarity] = useState('VS1')
-  const [shape, setShape] = useState('Round')
-  const [currency, setCurrency] = useState<'USD'|'INR'|'EUR'>('USD')
+  const [carats, setCarats]     = useState(1.0)
+  const [cut, setCut]           = useState('Excellent')
+  const [color, setColor]       = useState('G')
+  const [clarity, setClarity]   = useState('VS1')
+  const [shape, setShape]       = useState('Round')
+  const [currency, setCurrency] = useState('USD')
 
-  const val = useMemo(() => calcValue(carats, cut, color, clarity), [carats, cut, color, clarity])
-  const rates = { USD: 1, INR: 83.5, EUR: 0.92 }
-  const sym = { USD: '$', INR: '₹', EUR: '€' }
-  const rate = rates[currency]
-  const s = sym[currency]
+  const cur = CURRENCIES.find(c => c.code === currency) ?? CURRENCIES[0]
+  const val = useMemo(() => calcValue(carats, cut, color, clarity, shape), [carats, cut, color, clarity, shape])
+  const fmt = (n: number) => Math.round(n * cur.rate).toLocaleString()
 
-  const fmt = (n: number) => Math.round(n * rate).toLocaleString()
-
-  const grade = () => {
-    const cutS = Object.keys(CUT_MULT).indexOf(cut)
-    const colS = COLOR_GRADES.indexOf(color)
-    const clS = CLARITY_GRADES.indexOf(clarity)
-    const avg = (cutS/5 + colS/9 + clS/9) / 3
-    if (avg < 0.2) return { label:'Investment Grade', color:'text-emerald-300', bg:'bg-emerald-500/10 border-emerald-500/30' }
-    if (avg < 0.4) return { label:'Premium Quality',  color:'text-cyan-300',    bg:'bg-cyan-500/10 border-cyan-500/30' }
-    if (avg < 0.6) return { label:'Commercial Grade', color:'text-blue-300',    bg:'bg-blue-500/10 border-blue-500/30' }
-    return { label:'Budget Friendly', color:'text-slate-300', bg:'bg-slate-500/10 border-slate-500/30' }
+  const overallGrade = () => {
+    const ci = CUT_GRADES.indexOf(cut)
+    const li = COLOR_GRADES.indexOf(color)
+    const oi = CLARITY_GRADES.indexOf(clarity)
+    const avg = (ci / (CUT_GRADES.length - 1) + li / (COLOR_GRADES.length - 1) + oi / (CLARITY_GRADES.length - 1)) / 3
+    if (avg < 0.20) return { label: 'Investment Grade', color: '#059669', bg: '#d1fae5', border: '#6ee7b7' }
+    if (avg < 0.40) return { label: 'Premium Quality',  color: '#2563eb', bg: '#dbeafe', border: '#93c5fd' }
+    if (avg < 0.60) return { label: 'Commercial Grade', color: '#7c3aed', bg: '#ede9fe', border: '#c4b5fd' }
+    return { label: 'Value Grade', color: '#6b7280', bg: '#f3f4f6', border: '#d1d5db' }
   }
-  const gradeInfo = grade()
+  const grade = overallGrade()
 
-  const shapes = ['Round','Princess','Oval','Emerald','Pear','Cushion','Heart','Marquise','Asscher','Radiant']
-  const shapeBonus: Record<string,number> = { Round:1.1, Princess:1.0, Oval:1.05, Emerald:0.95, Pear:1.0, Cushion:1.0, Heart:1.02, Marquise:0.98, Asscher:0.97, Radiant:1.0 }
-
-  const shapeAdj = val.total * (shapeBonus[shape] ?? 1)
+  const SelBtn = ({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) => (
+    <button onClick={onClick} style={{
+      padding: '7px 10px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+      border: active ? 'none' : '1.5px solid #e5e7eb',
+      background: active ? 'linear-gradient(135deg,#4f46e5,#7c3aed)' : '#fff',
+      color: active ? '#fff' : '#4b5563',
+      boxShadow: active ? '0 4px 12px rgba(79,70,229,.3)' : 'none',
+      transition: 'all .15s',
+    }}>
+      {label}
+    </button>
+  )
 
   return (
-    <div className="min-h-screen px-4 py-12">
-      <div className="max-w-6xl mx-auto">
+    <div style={{ background: '#f8f5f0', minHeight: '100vh', padding: '40px 24px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl sm:text-5xl font-black shimmer-text mb-3">Diamond Valuation</h1>
-          <p className="text-slate-400 text-lg">Enter the 4Cs to get an accurate market value estimate</p>
+        <div style={{ marginBottom: 36 }}>
+          <div className="section-label">Calculator</div>
+          <h1 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', fontWeight: 900, color: '#1a1a2e', marginBottom: 6 }}>Diamond Valuation</h1>
+          <p style={{ color: '#6b7280', fontSize: 15 }}>Enter the 4Cs to calculate accurate market value</p>
+          <div className="accent-line" style={{ marginTop: 16, width: 60 }} />
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-8">
-          {/* Left: Controls */}
-          <div className="lg:col-span-2 space-y-5">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: 24, alignItems: 'start' }} className="val-grid">
+          {/* Controls */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Carat */}
-            <div className="glass-card rounded-2xl p-5">
-              <label className="block text-sm font-semibold text-slate-300 mb-3">
-                <span className="text-cyan-400">⚖️</span> Carat Weight
-                <span className="ml-auto float-right text-2xl font-black text-cyan-300">{carats.toFixed(2)} ct</span>
-              </label>
+            <div className="card-flat" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <label style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>⚖️ Carat Weight</label>
+                <span style={{ fontSize: 22, fontWeight: 900, color: '#4f46e5' }}>{carats.toFixed(2)} ct</span>
+              </div>
               <input type="range" min={0.1} max={10} step={0.01} value={carats}
                 onChange={e => setCarats(+e.target.value)}
-                className="w-full accent-cyan-500 cursor-pointer" />
-              <div className="flex justify-between text-xs text-slate-600 mt-1">
-                <span>0.10 ct</span><span>5.00 ct</span><span>10.00 ct</span>
+                style={{ width: '100%', accentColor: '#4f46e5', cursor: 'pointer', marginBottom: 10 }} />
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {PRESET_CARATS.map(v => (
+                  <button key={v} onClick={() => setCarats(v)} style={{
+                    padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    border: '1.5px solid', borderColor: carats === v ? '#4f46e5' : '#e5e7eb',
+                    background: carats === v ? '#ede9fe' : '#fff', color: carats === v ? '#4f46e5' : '#6b7280',
+                  }}>
+                    {v}ct
+                  </button>
+                ))}
               </div>
-              {[0.5,1.0,1.5,2.0,3.0,5.0].map(v => (
-                <button key={v} onClick={() => setCarats(v)}
-                  className={`mr-1.5 mt-2 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${carats === v ? 'bg-cyan-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>
-                  {v}ct
-                </button>
-              ))}
             </div>
 
             {/* Cut */}
-            <div className="glass-card rounded-2xl p-5">
-              <label className="block text-sm font-semibold text-slate-300 mb-3">✂️ Cut Grade</label>
-              <div className="grid grid-cols-3 gap-2">
-                {CUT_GRADES.map(g => (
-                  <button key={g} onClick={() => setCut(g)}
-                    className={`py-2 rounded-xl text-xs font-semibold transition-all ${cut === g ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>
-                    {g}
-                  </button>
-                ))}
+            <div className="card-flat" style={{ padding: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', display: 'block', marginBottom: 10 }}>✂️ Cut Grade</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                {CUT_GRADES.map(g => <SelBtn key={g} label={g} active={cut === g} onClick={() => setCut(g)} />)}
               </div>
             </div>
 
             {/* Color */}
-            <div className="glass-card rounded-2xl p-5">
-              <label className="block text-sm font-semibold text-slate-300 mb-3">
-                🎨 Color Grade
-                <span className="ml-2 text-xs text-slate-500">D = colorless · M = yellow</span>
-              </label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {COLOR_GRADES.map(g => (
-                  <button key={g} onClick={() => setColor(g)}
-                    className={`py-2 rounded-lg text-xs font-bold transition-all ${color === g ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>
-                    {g}
-                  </button>
-                ))}
+            <div className="card-flat" style={{ padding: 20 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                <label style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>🎨 Color Grade</label>
+                <span style={{ fontSize: 11, color: '#9ca3af' }}>D = colorless &nbsp;·&nbsp; M = tinted</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+                {COLOR_GRADES.map(g => <SelBtn key={g} label={g} active={color === g} onClick={() => setColor(g)} />)}
               </div>
             </div>
 
             {/* Clarity */}
-            <div className="glass-card rounded-2xl p-5">
-              <label className="block text-sm font-semibold text-slate-300 mb-3">
-                🔍 Clarity Grade
-              </label>
-              <div className="grid grid-cols-4 gap-1.5">
+            <div className="card-flat" style={{ padding: 20 }}>
+              <label style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', display: 'block', marginBottom: 10 }}>🔍 Clarity Grade</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                 {CLARITY_GRADES.map(g => (
-                  <button key={g} onClick={() => setClarity(g)}
-                    className={`py-2 rounded-lg text-xs font-bold transition-all ${clarity === g ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>
+                  <button key={g} onClick={() => setClarity(g)} style={{
+                    padding: '7px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                    border: clarity === g ? 'none' : '1.5px solid #e5e7eb',
+                    background: clarity === g ? 'linear-gradient(135deg,#059669,#0d9488)' : '#fff',
+                    color: clarity === g ? '#fff' : '#4b5563',
+                    transition: 'all .15s',
+                  }}>
                     {g}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Shape */}
-            <div className="glass-card rounded-2xl p-5">
-              <label className="block text-sm font-semibold text-slate-300 mb-3">💎 Shape</label>
-              <div className="grid grid-cols-5 gap-1.5">
-                {shapes.map(g => (
-                  <button key={g} onClick={() => setShape(g)}
-                    className={`py-1.5 rounded-lg text-xs font-medium transition-all ${shape === g ? 'bg-purple-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>
-                    {g.slice(0,6)}
-                  </button>
-                ))}
+            {/* Shape + Currency */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="card-flat" style={{ padding: 16 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', display: 'block', marginBottom: 8 }}>💎 Shape</label>
+                <select value={shape} onChange={e => setShape(e.target.value)} className="input" style={{ fontSize: 13 }}>
+                  {SHAPES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
-            </div>
-
-            {/* Currency */}
-            <div className="glass-card rounded-2xl p-5">
-              <label className="block text-sm font-semibold text-slate-300 mb-3">💱 Currency</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['USD','INR','EUR'] as const).map(c => (
-                  <button key={c} onClick={() => setCurrency(c)}
-                    className={`py-2 rounded-xl text-sm font-bold transition-all ${currency === c ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>
-                    {c}
-                  </button>
-                ))}
+              <div className="card-flat" style={{ padding: 16 }}>
+                <label style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e', display: 'block', marginBottom: 8 }}>💱 Currency</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {CURRENCIES.map(c => (
+                    <button key={c.code} onClick={() => setCurrency(c.code)} style={{
+                      padding: '5px 8px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', textAlign: 'left',
+                      border: currency === c.code ? 'none' : '1.5px solid #e5e7eb',
+                      background: currency === c.code ? '#ede9fe' : '#fff',
+                      color: currency === c.code ? '#4f46e5' : '#4b5563',
+                    }}>
+                      {c.sym} {c.code}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right: Results */}
-          <div className="lg:col-span-3 space-y-5">
+          {/* Results */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Main value card */}
-            <div className="glass-card rounded-3xl p-8 border border-cyan-500/20 animate-pulse-glow">
-              <div className="flex items-start justify-between mb-6">
+            <div style={{ background: 'linear-gradient(160deg,#1a1a4e,#4f46e5)', borderRadius: 20, padding: '28px 28px 24px', color: '#fff' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                 <div>
-                  <p className="text-slate-400 text-sm mb-1">Estimated Value ({shape})</p>
-                  <div className="text-5xl font-black text-cyan-300">{s}{fmt(shapeAdj)}</div>
-                  <p className="text-slate-500 text-sm mt-2">Range: {s}{fmt(shapeAdj*0.85)} - {s}{fmt(shapeAdj*1.25)}</p>
+                  <p style={{ fontSize: 12, opacity: .7, fontWeight: 500, marginBottom: 6 }}>Estimated Market Value</p>
+                  <div style={{ fontSize: 36, fontWeight: 900, lineHeight: 1 }}>
+                    {cur.sym}{fmt(val.total)}
+                  </div>
+                  <p style={{ fontSize: 13, opacity: .65, marginTop: 8 }}>
+                    Range: {cur.sym}{fmt(val.low)} - {cur.sym}{fmt(val.high)}
+                  </p>
                 </div>
-                <div className={`border px-3 py-1.5 rounded-full text-sm font-semibold ${gradeInfo.bg} ${gradeInfo.color}`}>
-                  {gradeInfo.label}
+                <div style={{ background: grade.bg, border: `1px solid ${grade.border}`, color: grade.color, padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>
+                  {grade.label}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
                 {[
-                  { label:'Price / Carat', val:`${s}${fmt(val.ppc)}` },
-                  { label:'Base Value',    val:`${s}${fmt(val.total)}` },
-                  { label:'Shape Premium', val:`${((shapeBonus[shape]??1)-1)*100 > 0 ? '+' : ''}${(((shapeBonus[shape]??1)-1)*100).toFixed(0)}%` },
+                  { l: 'Price / Carat', v: `${cur.sym}${fmt(val.ppc)}` },
+                  { l: 'Base (USD)',    v: `$${val.total.toLocaleString()}` },
+                  { l: 'Shape Bonus',  v: `${((SHAPE_MULT[shape] ?? 1) - 1) * 100 >= 0 ? '+' : ''}${(((SHAPE_MULT[shape] ?? 1) - 1) * 100).toFixed(0)}%` },
                 ].map(item => (
-                  <div key={item.label} className="glass rounded-xl p-3 text-center">
-                    <div className="text-lg font-bold text-white">{item.val}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">{item.label}</div>
+                  <div key={item.l} style={{ background: 'rgba(255,255,255,.12)', borderRadius: 10, padding: '10px 12px' }}>
+                    <div style={{ fontSize: 14, fontWeight: 800 }}>{item.v}</div>
+                    <div style={{ fontSize: 11, opacity: .65, marginTop: 2 }}>{item.l}</div>
                   </div>
                 ))}
               </div>
 
               {/* Factor bars */}
-              <div className="space-y-3">
-                {[
-                  { label:`Cut: ${cut}`,          mult:CUT_MULT[cut]??1,     max:1.3,  color:'bg-cyan-500' },
-                  { label:`Color: ${color}`,       mult:COLOR_MULT[color]??1, max:1.5,  color:'bg-purple-500' },
-                  { label:`Clarity: ${clarity}`,   mult:CLARITY_MULT[clarity]??1,max:1.6,color:'bg-emerald-500' },
-                ].map(f => (
-                  <div key={f.label}>
-                    <div className="flex justify-between text-xs text-slate-400 mb-1">
-                      <span>{f.label}</span>
-                      <span>{(f.mult * 100).toFixed(0)}% of base</span>
-                    </div>
-                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                      <div className={`h-full ${f.color} rounded-full transition-all duration-700`}
-                        style={{ width:`${(f.mult/f.max)*100}%` }} />
-                    </div>
+              {[
+                { l: `Cut: ${cut}`,       mult: CUT_MULT[cut] ?? 1,       max: 1.30, color: '#a5b4fc' },
+                { l: `Color: ${color}`,   mult: COLOR_MULT[color] ?? 1,   max: 1.50, color: '#c4b5fd' },
+                { l: `Clarity: ${clarity}`,mult: CLARITY_MULT[clarity] ?? 1,max: 1.60,color: '#6ee7b7' },
+              ].map(f => (
+                <div key={f.l} style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, opacity: .8, marginBottom: 4 }}>
+                    <span>{f.l}</span>
+                    <span>{(f.mult * 100).toFixed(0)}%</span>
                   </div>
-                ))}
-              </div>
+                  <div style={{ height: 5, background: 'rgba(255,255,255,.15)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${(f.mult / f.max) * 100}%`, background: f.color, borderRadius: 999, transition: 'width .6s ease' }} />
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* Value Factors */}
-            <div className="glass-card rounded-2xl p-6">
-              <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-cyan-400" /> Value Components
-              </h3>
-              <div className="space-y-3">
+            {/* Value factors */}
+            <div className="card-flat" style={{ padding: 20 }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <TrendingUp size={16} color="#4f46e5" /> Value Components
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {VALUE_FACTORS.map(f => (
-                  <div key={f.factor} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl">
-                    <span className="text-2xl">{f.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-semibold text-white text-sm">{f.factor}</span>
-                        <span className="text-xs text-cyan-300 font-bold">{f.weight}% weight</span>
+                  <div key={f.factor} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, background: '#f9fafb', borderRadius: 10, padding: '12px 14px' }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>{f.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{f.factor}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: '#4f46e5' }}>{f.weight}%</span>
                       </div>
-                      <p className="text-xs text-slate-500 leading-relaxed">{f.description}</p>
+                      <p style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>{f.description}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Pricing Table */}
-            <div className="glass-card rounded-2xl p-6 overflow-x-auto">
-              <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-                <Info className="w-5 h-5 text-purple-400" /> Market Price Reference (USD, Round Cut)
-              </h3>
-              <table className="w-full text-sm">
+            {/* Price table */}
+            <div className="card-flat" style={{ padding: 20, overflowX: 'auto' }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Info size={15} color="#6b7280" /> Market Price Reference (USD, Round Brilliant)
+              </p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
-                  <tr className="text-xs text-slate-500 border-b border-white/10">
-                    <th className="text-left py-2 pr-4">Carats</th>
-                    <th className="text-right py-2 pr-4">D/VS1</th>
-                    <th className="text-right py-2 pr-4">G/VS2</th>
-                    <th className="text-right py-2">J/SI1</th>
+                  <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                    <th style={{ textAlign: 'left', padding: '6px 8px', color: '#9ca3af', fontWeight: 600, fontSize: 11 }}>Carats</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: '#059669', fontWeight: 600, fontSize: 11 }}>D / VS1</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: '#2563eb', fontWeight: 600, fontSize: 11 }}>G / VS2</th>
+                    <th style={{ textAlign: 'right', padding: '6px 8px', color: '#7c3aed', fontWeight: 600, fontSize: 11 }}>J / SI1</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {PRICING_GUIDE.map(row => (
-                    <tr key={row.carats} className="border-b border-white/5 hover:bg-white/3 transition-colors">
-                      <td className="py-2 pr-4 text-slate-300 font-medium">{row.carats}</td>
-                      <td className="py-2 pr-4 text-emerald-400 text-right">{row.dVs1}</td>
-                      <td className="py-2 pr-4 text-cyan-400 text-right">{row.gVs2}</td>
-                      <td className="py-2 text-purple-400 text-right">{row.jSi1}</td>
+                  {PRICING_GUIDE.map((row, i) => (
+                    <tr key={row.carats} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 ? '#faf8ff' : '#fff' }}>
+                      <td style={{ padding: '8px 8px', fontWeight: 600, color: '#374151' }}>{row.carats}</td>
+                      <td style={{ padding: '8px 8px', textAlign: 'right', color: '#059669' }}>{row.dVs1}</td>
+                      <td style={{ padding: '8px 8px', textAlign: 'right', color: '#2563eb' }}>{row.gVs2}</td>
+                      <td style={{ padding: '8px 8px', textAlign: 'right', color: '#7c3aed' }}>{row.jSi1}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -252,6 +266,10 @@ export default function ValuationPage() {
           </div>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 900px) { .val-grid { grid-template-columns: 1fr !important; } }
+      `}</style>
     </div>
   )
 }

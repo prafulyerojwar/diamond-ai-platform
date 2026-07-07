@@ -1,6 +1,7 @@
+'use client'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, Gem } from 'lucide-react'
 
 const links = [
   { to: '/',          label: 'Home' },
@@ -9,6 +10,7 @@ const links = [
   { to: '/valuation', label: 'Valuation' },
   { to: '/history',   label: 'History' },
   { to: '/designer',  label: 'Designer' },
+  { to: '/compare',   label: 'Compare' },
 ]
 
 export default function Navbar() {
@@ -16,74 +18,78 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
 
   return (
-    <nav className="sticky top-0 z-50 glass border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav style={{ background: '#fff', borderBottom: '1px solid #e8e4f0', position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 1px 8px rgba(0,0,0,.06)' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2.5">
-            <div className="relative w-9 h-9">
-              <svg viewBox="0 0 40 40" className="w-9 h-9 animate-prism">
-                <polygon points="20,4 36,16 30,36 10,36 4,16" fill="none" stroke="url(#navGrad)" strokeWidth="2" />
-                <polygon points="20,4 36,16 20,24" fill="rgba(168,216,234,0.3)" />
-                <polygon points="20,4 4,16 20,24"  fill="rgba(212,184,224,0.25)" />
-                <polygon points="4,16 10,36 20,24"  fill="rgba(168,216,234,0.2)" />
-                <polygon points="36,16 30,36 20,24" fill="rgba(212,184,224,0.2)" />
-                <polygon points="10,36 30,36 20,24" fill="rgba(168,216,234,0.15)" />
-                <defs>
-                  <linearGradient id="navGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#a8d8ea" /><stop offset="100%" stopColor="#d4b8e0" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-300 animate-twinkle" />
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <div style={{ width: 36, height: 36, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Gem size={18} color="#fff" />
             </div>
             <div>
-              <span className="font-bold text-lg shimmer-text">DiamondAI</span>
-              <div className="text-xs text-cyan-400/60 -mt-1 font-medium tracking-widest">PLATFORM</div>
+              <div style={{ fontWeight: 800, fontSize: 18, background: 'linear-gradient(135deg,#4f46e5,#7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                DiamondAI
+              </div>
+              <div style={{ fontSize: 10, color: '#9ca3af', letterSpacing: '0.1em', marginTop: -2, fontWeight: 500 }}>PLATFORM</div>
             </div>
           </Link>
 
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-1">
-            {links.map(l => (
-              <Link key={l.to} to={l.to}
-                className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname === l.to
-                    ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30 glow-text'
-                    : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}>
-                {l.label}
-              </Link>
-            ))}
+          {/* Desktop nav */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} className="nav-desktop">
+            {links.map(l => {
+              const active = pathname === l.to
+              return (
+                <Link key={l.to} to={l.to} style={{
+                  padding: '7px 14px', borderRadius: 8, fontSize: 14, fontWeight: 500,
+                  textDecoration: 'none',
+                  color: active ? '#4f46e5' : '#4b5563',
+                  background: active ? '#ede9fe' : 'transparent',
+                  transition: 'all .15s',
+                }}>
+                  {l.label}
+                </Link>
+              )
+            })}
           </div>
 
-          {/* Right */}
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1.5 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1.5 rounded-full">
-              <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="text-xs text-cyan-300 font-medium">AI Online</span>
+          {/* Right badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 999, padding: '5px 12px' }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#22c55e', animation: 'pulse 2s infinite' }} />
+              <span style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>AI Online</span>
             </div>
-            <button className="md:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5"
-              onClick={() => setOpen(o => !o)}>
-              {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            <button
+              onClick={() => setOpen(o => !o)}
+              style={{ display: 'none', padding: 8, borderRadius: 8, border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280' }}
+              className="nav-mobile-btn"
+            >
+              {open ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
 
         {/* Mobile menu */}
         {open && (
-          <div className="md:hidden py-3 space-y-1 border-t border-white/10">
+          <div style={{ borderTop: '1px solid #f3f4f6', paddingBlock: 8, paddingBottom: 12 }}>
             {links.map(l => (
-              <Link key={l.to} to={l.to} onClick={() => setOpen(false)}
-                className={`block px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  pathname === l.to ? 'bg-cyan-500/10 text-cyan-300' : 'text-slate-300 hover:text-white hover:bg-white/5'
-                }`}>
+              <Link key={l.to} to={l.to} onClick={() => setOpen(false)} style={{
+                display: 'block', padding: '10px 12px', borderRadius: 8, fontSize: 14, fontWeight: 500,
+                textDecoration: 'none', color: pathname === l.to ? '#4f46e5' : '#374151',
+                background: pathname === l.to ? '#ede9fe' : 'transparent', marginBottom: 2,
+              }}>
                 {l.label}
               </Link>
             ))}
           </div>
         )}
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .nav-desktop { display: none !important; }
+          .nav-mobile-btn { display: flex !important; }
+        }
+      `}</style>
     </nav>
   )
 }

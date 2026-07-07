@@ -1,79 +1,69 @@
 import { useState, useMemo } from 'react'
-import { Search, Star, TrendingUp } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { DIAMONDS, DIAMOND_CUTS, type Diamond } from '../data/diamonds'
 
-const RARITY_COLORS: Record<string, string> = {
-  'Common':    'bg-slate-500/20 text-slate-300 border-slate-500/30',
-  'Uncommon':  'bg-blue-500/20  text-blue-300  border-blue-500/30',
-  'Rare':      'bg-purple-500/20 text-purple-300 border-purple-500/30',
-  'Very Rare': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  'Legendary': 'bg-red-500/20   text-red-300   border-red-500/30',
+const RARITY_BADGE: Record<string, string> = {
+  'Common':    'badge-common',
+  'Uncommon':  'badge-uncommon',
+  'Rare':      'badge-rare',
+  'Very Rare': 'badge-very-rare',
+  'Legendary': 'badge-legendary',
 }
 
 function DiamondCard({ d, onClick }: { d: Diamond; onClick: () => void }) {
-  const [hover, setHover] = useState(false)
+  const [imgErr, setImgErr] = useState(false)
+
   return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      className="glass-card rounded-2xl overflow-hidden cursor-pointer group transition-all duration-300 relative"
-    >
-      {/* Visual */}
-      <div className="relative h-44 flex items-center justify-center overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, rgba(168,216,234,0.08) 0%, rgba(212,184,224,0.05) 100%)' }}>
-        {hover && (
-          <>
-            <div className="absolute inset-0 bg-cyan-500/5" />
-            {Array.from({length:8}).map((_,i) => (
-              <div key={i} className="absolute w-1.5 h-1.5 rounded-full animate-twinkle"
-                style={{ left:`${15+i*10}%`, top:`${20+Math.sin(i)*40}%`, background:'rgba(168,216,234,0.8)', animationDelay:`${i*0.2}s` }} />
-            ))}
-          </>
-        )}
-        <div className={`text-8xl transition-all duration-300 ${hover ? 'scale-110 animate-prism' : ''}`}
-          style={{ filter: hover ? 'drop-shadow(0 0 20px rgba(168,216,234,0.8))' : 'drop-shadow(0 0 10px rgba(168,216,234,0.3))' }}>
-          {d.emoji}
-        </div>
-        {/* Rarity badge */}
-        <div className={`absolute top-3 right-3 text-xs font-semibold px-2.5 py-1 rounded-full border ${RARITY_COLORS[d.rarity]}`}>
-          {d.rarity}
-        </div>
-        {d.rarity === 'Legendary' && (
-          <div className="absolute top-3 left-3">
-            <Star className="w-4 h-4 text-amber-400 fill-amber-400 animate-sparkle" />
+    <div className="card" onClick={onClick} style={{ cursor: 'pointer', overflow: 'hidden', padding: 0 }}>
+      {/* Image */}
+      <div style={{ position: 'relative', height: 180, overflow: 'hidden', background: '#f3f0ff' }}>
+        {!imgErr ? (
+          <img
+            src={d.image}
+            alt={d.name}
+            onError={() => setImgErr(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s ease' }}
+            className="gallery-img"
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg,#ede9fe,#dbeafe)', fontSize: 56 }}>
+            💎
           </div>
         )}
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,.35) 100%)' }} />
+        <span className={`${RARITY_BADGE[d.rarity]}`} style={{ position: 'absolute', top: 10, right: 10, fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999 }}>
+          {d.rarity}
+        </span>
+        <div style={{ position: 'absolute', bottom: 10, left: 12, color: '#fff', fontWeight: 700, fontSize: 15, textShadow: '0 1px 4px rgba(0,0,0,.5)' }}>
+          {d.name}
+        </div>
       </div>
 
-      {/* Info */}
-      <div className="p-4">
-        <h3 className="font-bold text-white mb-0.5 group-hover:text-cyan-300 transition-colors">{d.name}</h3>
-        <p className="text-xs text-slate-500 mb-3">{d.shape} · {d.cut} Cut · {d.origin}</p>
-
-        <div className="grid grid-cols-3 gap-2 mb-3">
+      {/* Body */}
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
           {[
-            { label:'Carats', val:`${d.carats}ct` },
-            { label:'Color',  val:d.color.length > 3 ? d.color.split(' ')[1] || d.color : d.color },
-            { label:'Clarity',val:d.clarity },
+            { l: 'Shape',   v: d.shape },
+            { l: d.carats + ' ct', v: d.cut },
           ].map(item => (
-            <div key={item.label} className="text-center bg-white/5 rounded-lg py-1.5">
-              <div className="text-xs font-bold text-white">{item.val}</div>
-              <div className="text-[10px] text-slate-500">{item.label}</div>
+            <div key={item.l} style={{ flex: 1, background: '#f5f3ff', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#4f46e5' }}>{item.l}</div>
+              <div style={{ fontSize: 10, color: '#6b7280', marginTop: 1 }}>{item.v}</div>
             </div>
           ))}
+          <div style={{ flex: 1, background: '#f0fdf4', borderRadius: 8, padding: '6px 8px', textAlign: 'center' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#10b981' }}>{d.color.length > 2 ? d.color.split(' ')[1] || d.color : d.color}</div>
+            <div style={{ fontSize: 10, color: '#6b7280', marginTop: 1 }}>Color</div>
+          </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <div className="text-lg font-black text-cyan-300">${d.totalValue.toLocaleString()}</div>
-            <div className="text-[10px] text-slate-500">${d.pricePerCarat.toLocaleString()}/ct</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e' }}>${d.totalValue.toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: '#9ca3af' }}>${d.pricePerCarat.toLocaleString()}/ct</div>
           </div>
-          <div className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-lg ${
-            d.cut === 'Excellent' ? 'bg-emerald-500/20 text-emerald-300' :
-            d.cut === 'Very Good' ? 'bg-blue-500/20 text-blue-300' : 'bg-slate-500/20 text-slate-300'
-          }`}>
-            <TrendingUp className="w-3 h-3" /> {d.cut}
+          <div style={{ fontSize: 12, color: '#4b5563', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, padding: '3px 8px', fontWeight: 500 }}>
+            {d.clarity}
           </div>
         </div>
       </div>
@@ -82,79 +72,88 @@ function DiamondCard({ d, onClick }: { d: Diamond; onClick: () => void }) {
 }
 
 function DiamondModal({ d, onClose }: { d: Diamond; onClose: () => void }) {
+  const [imgErr, setImgErr] = useState(false)
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div className="relative glass-card rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-scale-in" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/10">✕</button>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={onClose}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,.5)', backdropFilter: 'blur(4px)' }} />
+      <div className="animate-scale-in" onClick={e => e.stopPropagation()} style={{
+        position: 'relative', background: '#fff', borderRadius: 20, maxWidth: 680, width: '100%',
+        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 80px rgba(0,0,0,.2)',
+      }}>
+        <button onClick={onClose} style={{ position: 'absolute', top: 16, right: 16, zIndex: 10, width: 32, height: 32, borderRadius: '50%', border: '1px solid #e5e7eb', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}>
+          <X size={16} />
+        </button>
 
-        <div className="flex items-start gap-6 mb-6">
-          <div className="text-7xl animate-float flex-shrink-0" style={{ filter:'drop-shadow(0 0 20px rgba(168,216,234,0.6))' }}>{d.emoji}</div>
-          <div>
-            <div className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full border mb-2 ${RARITY_COLORS[d.rarity]}`}>{d.rarity}</div>
-            <h2 className="text-2xl font-black text-white">{d.name}</h2>
-            <p className="text-slate-400 text-sm mt-1">{d.description}</p>
-          </div>
+        {/* Hero image */}
+        <div style={{ height: 260, overflow: 'hidden', borderRadius: '20px 20px 0 0', background: '#f3f0ff' }}>
+          {!imgErr ? (
+            <img src={d.image} alt={d.name} onError={() => setImgErr(true)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 80 }}>💎</div>
+          )}
         </div>
 
-        {/* Pricing */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="glass rounded-xl p-4 text-center border border-cyan-500/20">
-            <div className="text-2xl font-black text-cyan-300">${d.totalValue.toLocaleString()}</div>
-            <div className="text-xs text-slate-400 mt-1">Total Value</div>
-          </div>
-          <div className="glass rounded-xl p-4 text-center border border-purple-500/20">
-            <div className="text-2xl font-black text-purple-300">${d.pricePerCarat.toLocaleString()}</div>
-            <div className="text-xs text-slate-400 mt-1">Per Carat</div>
-          </div>
-        </div>
-
-        {/* Grading */}
-        <h3 className="font-bold text-white mb-3">Grading Details</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          {[
-            { label:'Carat',       val:`${d.carats} ct` },
-            { label:'Cut Grade',   val:d.cut },
-            { label:'Color',       val:d.color },
-            { label:'Clarity',     val:d.clarity },
-            { label:'Polish',      val:d.polish },
-            { label:'Symmetry',    val:d.symmetry },
-            { label:'Fluorescence',val:d.fluorescence },
-            { label:'Origin',      val:d.origin },
-          ].map(item => (
-            <div key={item.label} className="bg-white/5 rounded-xl p-3">
-              <div className="text-xs text-slate-500 mb-0.5">{item.label}</div>
-              <div className="text-sm font-semibold text-white">{item.val}</div>
+        <div style={{ padding: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 20 }}>
+            <div>
+              <span className={RARITY_BADGE[d.rarity]} style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999, display: 'inline-block', marginBottom: 8 }}>{d.rarity}</span>
+              <h2 style={{ fontSize: 24, fontWeight: 800, color: '#1a1a2e', marginBottom: 4 }}>{d.name}</h2>
+              <p style={{ fontSize: 14, color: '#6b7280' }}>{d.shape} · {d.cut} Cut · Origin: {d.origin}</p>
             </div>
-          ))}
-        </div>
-
-        {/* Proportions */}
-        {d.depth > 0 && (
-          <>
-            <h3 className="font-bold text-white mb-3">Proportions</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="glass rounded-xl p-3">
-                <div className="text-xs text-slate-500 mb-1">Depth %</div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-white/10 rounded-full h-2">
-                    <div className="bg-cyan-500 h-2 rounded-full" style={{ width:`${Math.min(d.depth, 100)}%` }} />
-                  </div>
-                  <span className="text-sm font-bold text-white">{d.depth}%</span>
-                </div>
-              </div>
-              <div className="glass rounded-xl p-3">
-                <div className="text-xs text-slate-500 mb-1">Table %</div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-white/10 rounded-full h-2">
-                    <div className="bg-purple-500 h-2 rounded-full" style={{ width:`${Math.min(d.table, 100)}%` }} />
-                  </div>
-                  <span className="text-sm font-bold text-white">{d.table}%</span>
-                </div>
-              </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: 26, fontWeight: 900, color: '#4f46e5' }}>${d.totalValue.toLocaleString()}</div>
+              <div style={{ fontSize: 12, color: '#9ca3af' }}>${d.pricePerCarat.toLocaleString()}/carat</div>
             </div>
-          </>
-        )}
+          </div>
+
+          <p style={{ fontSize: 14, color: '#4b5563', lineHeight: 1.7, marginBottom: 24, padding: '14px 16px', background: '#f9fafb', borderRadius: 10, borderLeft: '3px solid #4f46e5' }}>
+            {d.description}
+          </p>
+
+          {/* Specs grid */}
+          <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1a2e', marginBottom: 12 }}>Grading Details</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+            {[
+              { l: 'Carat',        v: `${d.carats} ct` },
+              { l: 'Cut Grade',    v: d.cut },
+              { l: 'Color',        v: d.color },
+              { l: 'Clarity',      v: d.clarity },
+              { l: 'Polish',       v: d.polish },
+              { l: 'Symmetry',     v: d.symmetry },
+              { l: 'Fluorescence', v: d.fluorescence },
+              { l: 'Origin',       v: d.origin },
+            ].map(item => (
+              <div key={item.l} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 3 }}>{item.l}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1a1a2e' }}>{item.v}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Proportions */}
+          {d.depth > 0 && (
+            <>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1a1a2e', marginBottom: 12 }}>Proportions</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {[
+                  { l: 'Depth %', v: d.depth, color: '#4f46e5' },
+                  { l: 'Table %', v: d.table, color: '#7c3aed' },
+                ].map(item => (
+                  <div key={item.l} style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 14px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, color: '#4b5563', fontWeight: 500 }}>{item.l}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: item.color }}>{item.v}%</span>
+                    </div>
+                    <div style={{ height: 6, background: '#e5e7eb', borderRadius: 999, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${Math.min(item.v, 100)}%`, background: item.color, borderRadius: 999 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -169,61 +168,88 @@ export default function GalleryPage() {
   const filtered = useMemo(() => {
     let list = DIAMONDS
     if (category !== 'All') list = list.filter(d => d.category === category)
-    if (search) list = list.filter(d => d.name.toLowerCase().includes(search.toLowerCase()) || d.shape.toLowerCase().includes(search.toLowerCase()))
-    return [...list].sort((a,b) =>
+    if (search) list = list.filter(d =>
+      d.name.toLowerCase().includes(search.toLowerCase()) ||
+      d.shape.toLowerCase().includes(search.toLowerCase()) ||
+      d.color.toLowerCase().includes(search.toLowerCase())
+    )
+    return [...list].sort((a, b) =>
       sort === 'value'  ? b.totalValue - a.totalValue :
       sort === 'carats' ? b.carats - a.carats : a.name.localeCompare(b.name)
     )
   }, [search, category, sort])
 
   return (
-    <div className="min-h-screen px-4 py-12">
-      <div className="max-w-7xl mx-auto">
+    <div style={{ background: '#f8f5f0', minHeight: '100vh', padding: '40px 24px' }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl sm:text-5xl font-black shimmer-text mb-3">Diamond Gallery</h1>
-          <p className="text-slate-400 text-lg">Browse our collection of {DIAMONDS.length}+ diamonds with full specifications</p>
+        <div style={{ marginBottom: 36 }}>
+          <div className="section-label">Collection</div>
+          <h1 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', fontWeight: 900, color: '#1a1a2e', marginBottom: 6 }}>Diamond Gallery</h1>
+          <p style={{ color: '#6b7280', fontSize: 15 }}>Browse {DIAMONDS.length} diamonds with full GIA specifications and market values</p>
+          <div className="accent-line" style={{ marginTop: 16, width: 60 }} />
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search diamonds..."
-              className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:bg-white/8" />
+        {/* Filters bar */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 200 }}>
+            <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, shape, color..."
+              className="input" style={{ paddingLeft: 36 }} />
           </div>
-          <select value={sort} onChange={e => setSort(e.target.value as any)}
-            className="px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-cyan-500/50">
-            <option value="value">Sort: Value</option>
-            <option value="carats">Sort: Carats</option>
-            <option value="name">Sort: Name</option>
+          <select value={sort} onChange={e => setSort(e.target.value as 'value' | 'carats' | 'name')}
+            className="input" style={{ width: 'auto', flex: '0 0 auto' }}>
+            <option value="value">Sort: Highest Value</option>
+            <option value="carats">Sort: Most Carats</option>
+            <option value="name">Sort: A-Z Name</option>
           </select>
         </div>
 
         {/* Category tabs */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {DIAMOND_CUTS.map(c => (
-            <button key={c} onClick={() => setCategory(c)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                category === c ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white' : 'glass border border-white/10 text-slate-400 hover:text-white hover:border-white/20'
-              }`}>
-              {c}
-              <span className="ml-1.5 text-xs opacity-60">
-                {c === 'All' ? DIAMONDS.length : DIAMONDS.filter(d => d.category === c).length}
-              </span>
-            </button>
-          ))}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
+          {DIAMOND_CUTS.map(c => {
+            const count = c === 'All' ? DIAMONDS.length : DIAMONDS.filter(d => d.category === c).length
+            const active = category === c
+            return (
+              <button key={c} onClick={() => setCategory(c)} style={{
+                padding: '7px 16px', borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: 'none',
+                background: active ? '#4f46e5' : '#fff',
+                color: active ? '#fff' : '#4b5563',
+                boxShadow: active ? '0 4px 12px rgba(79,70,229,.3)' : '0 1px 4px rgba(0,0,0,.08)',
+                transition: 'all .15s',
+              }}>
+                {c} <span style={{ opacity: .65, fontSize: 11 }}>({count})</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Results count */}
+        <div style={{ fontSize: 13, color: '#9ca3af', marginBottom: 16 }}>
+          Showing {filtered.length} diamonds
         </div>
 
         {/* Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
           {filtered.map(d => (
             <DiamondCard key={d.id} d={d} onClick={() => setSelected(d)} />
           ))}
         </div>
+
+        {filtered.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 24px', color: '#9ca3af' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+            <p style={{ fontWeight: 600, color: '#4b5563' }}>No diamonds found</p>
+            <p style={{ fontSize: 14, marginTop: 4 }}>Try adjusting your search or filters</p>
+          </div>
+        )}
       </div>
 
       {selected && <DiamondModal d={selected} onClose={() => setSelected(null)} />}
+
+      <style>{`
+        .gallery-img:hover { transform: scale(1.06); }
+      `}</style>
     </div>
   )
 }
