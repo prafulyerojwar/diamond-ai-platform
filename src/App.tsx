@@ -9,6 +9,7 @@ import ValuationPage from './pages/ValuationPage'
 import HistoryPage from './pages/HistoryPage'
 import DesignerPage from './pages/DesignerPage'
 import ComparePage from './pages/ComparePage'
+import DiamondChatbot from './components/DiamondChatbot'
 import './index.css'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
             </Routes>
           </main>
         </div>
+        <DiamondChatbot />
         <Toaster
           position="bottom-right"
           toastOptions={{
