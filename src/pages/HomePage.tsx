@@ -38,9 +38,65 @@ export default function HomePage() {
             ✦ AI-POWERED DIAMOND INTELLIGENCE
           </div>
 
-          {/* 3D Rotating Diamond */}
+          {/* 3D Rotating Diamond with orbit rings */}
           <div className="animate-float" style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
-            <AnimatedDiamond size={300} />
+            <div style={{ position: 'relative', width: 460, height: 460, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+
+              {/* Orbit ring 1 — indigo, fastest */}
+              <div style={{
+                position: 'absolute', inset: 0, borderRadius: '50%',
+                border: '2px solid transparent',
+                backgroundImage: 'linear-gradient(#f8f5f0, #f8f5f0), conic-gradient(from 0deg, #4f46e5 0%, #a78bfa 35%, transparent 50%, transparent 100%)',
+                backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box',
+                animation: 'ring1Spin 3s linear infinite',
+              }} />
+
+              {/* Orbit ring 2 — cyan/teal, counter-clockwise */}
+              <div style={{
+                position: 'absolute', inset: 16, borderRadius: '50%',
+                border: '2px solid transparent',
+                backgroundImage: 'linear-gradient(#f8f5f0, #f8f5f0), conic-gradient(from 120deg, #06b6d4 0%, #22d3ee 30%, transparent 48%, transparent 100%)',
+                backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box',
+                animation: 'ring2Spin 4.5s linear infinite',
+              }} />
+
+              {/* Orbit ring 3 — pink/rose */}
+              <div style={{
+                position: 'absolute', inset: 32, borderRadius: '50%',
+                border: '1.5px solid transparent',
+                backgroundImage: 'linear-gradient(#f8f5f0, #f8f5f0), conic-gradient(from 240deg, #ec4899 0%, #f9a8d4 28%, transparent 46%, transparent 100%)',
+                backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box',
+                animation: 'ring3Spin 6s linear infinite',
+              }} />
+
+              {/* Orbit ring 4 — amber/gold, counter */}
+              <div style={{
+                position: 'absolute', inset: 46, borderRadius: '50%',
+                border: '2px solid transparent',
+                backgroundImage: 'linear-gradient(#f8f5f0, #f8f5f0), conic-gradient(from 60deg, #f59e0b 0%, #fcd34d 32%, transparent 50%, transparent 100%)',
+                backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box',
+                animation: 'ring4Spin 5s linear infinite',
+              }} />
+
+              {/* Orbit ring 5 — green/emerald */}
+              <div style={{
+                position: 'absolute', inset: 60, borderRadius: '50%',
+                border: '1.5px solid transparent',
+                backgroundImage: 'linear-gradient(#f8f5f0, #f8f5f0), conic-gradient(from 300deg, #10b981 0%, #6ee7b7 25%, transparent 45%, transparent 100%)',
+                backgroundOrigin: 'border-box', backgroundClip: 'padding-box, border-box',
+                animation: 'ring5Spin 7.5s linear infinite',
+              }} />
+
+              {/* Soft ambient glow */}
+              <div style={{
+                position: 'absolute', inset: 60, borderRadius: '50%',
+                background: 'radial-gradient(ellipse at center, rgba(168,216,234,0.22) 0%, rgba(124,58,237,0.10) 50%, transparent 75%)',
+                animation: 'pulseGlow 3s ease-in-out infinite',
+              }} />
+
+              {/* Diamond itself */}
+              <AnimatedDiamond size={460} />
+            </div>
           </div>
 
           <h1 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.8rem)', fontWeight: 900, lineHeight: 1.1, marginBottom: 16, color: '#1a1a2e' }}>

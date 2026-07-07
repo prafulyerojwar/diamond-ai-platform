@@ -46,6 +46,37 @@
   from { transform: rotateY(0deg)   rotateX(18deg); }
   to   { transform: rotateY(360deg) rotateX(18deg); }
 }
+/* ── Orbit ring spins (each unique tilt angle) ── */
+@keyframes ring1Spin {
+  from { transform: perspective(500px) rotateX(72deg) rotateZ(0deg); }
+  to   { transform: perspective(500px) rotateX(72deg) rotateZ(360deg); }
+}
+@keyframes ring2Spin {
+  from { transform: perspective(500px) rotateX(58deg) rotateZ(0deg); }
+  to   { transform: perspective(500px) rotateX(58deg) rotateZ(-360deg); }
+}
+@keyframes ring3Spin {
+  from { transform: perspective(500px) rotateX(82deg) rotateZ(0deg); }
+  to   { transform: perspective(500px) rotateX(82deg) rotateZ(360deg); }
+}
+@keyframes ring4Spin {
+  from { transform: perspective(500px) rotateX(46deg) rotateZ(0deg); }
+  to   { transform: perspective(500px) rotateX(46deg) rotateZ(-360deg); }
+}
+@keyframes ring5Spin {
+  from { transform: perspective(500px) rotateX(66deg) rotateZ(0deg); }
+  to   { transform: perspective(500px) rotateX(66deg) rotateZ(360deg); }
+}
+/* ── Chatbot button rainbow border ── */
+@keyframes rotateBorder {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* ── Corner star twinkle ── */
+@keyframes starPulse {
+  0%,100% { opacity: 0.5; transform: scale(0.8) rotate(0deg); }
+  50%     { opacity: 1;   transform: scale(1.3) rotate(180deg); }
+}
 
 /* ── Utility ── */
 .animate-twinkle    { animation: twinkle 2.5s ease-in-out infinite; }

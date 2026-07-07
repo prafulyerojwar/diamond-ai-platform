@@ -397,9 +397,22 @@ export default function DiamondChatbot() {
           0%, 80%, 100% { transform: translateY(0); }
           40% { transform: translateY(-6px); }
         }
+        @keyframes rotateBorder {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes starPulse {
+          0%,100% { opacity: 0.5; transform: scale(0.8) rotate(0deg); }
+          50%     { opacity: 1;   transform: scale(1.3) rotate(180deg); }
+        }
+        @keyframes outerGlow {
+          0%,100% { box-shadow: 0 0 20px 4px rgba(168,85,247,.45), 0 0 40px 8px rgba(79,70,229,.25); }
+          33%     { box-shadow: 0 0 24px 6px rgba(6,182,212,.50), 0 0 48px 10px rgba(6,182,212,.20); }
+          66%     { box-shadow: 0 0 22px 5px rgba(236,72,153,.45), 0 0 44px 9px rgba(236,72,153,.20); }
+        }
         @media (max-width: 440px) {
           .chatbot-panel { width: calc(100vw - 32px) !important; right: 16px !important; }
-          .chatbot-btn { right: 16px !important; bottom: 16px !important; }
+          .chatbot-btn-wrap { right: 16px !important; bottom: 16px !important; }
         }
       `}</style>
 
@@ -632,59 +645,78 @@ export default function DiamondChatbot() {
         </div>
       </div>
 
-      {/* Floating button */}
+      {/* Floating button — beautiful glowing diamond design */}
       <div
-        className="chatbot-btn"
-        onClick={() => setOpen(o => !o)}
-        style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 1000,
-          width: 68,
-          height: 68,
-          borderRadius: 18,
-          background: 'linear-gradient(135deg,#4f46e5,#7c3aed)',
-          boxShadow: '0 8px 32px rgba(79,70,229,.5)',
-          cursor: 'pointer',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+        className="chatbot-btn-wrap"
+        style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000, width: 80, height: 80 }}
       >
-        {/* Pulsing glow wrapper (only when closed) */}
+        {/* Spinning rainbow conic border (behind button) */}
         {!open && (
-          <div style={{ position: 'relative', width: 56, height: 56 }}>
-            <div
-              style={{
-                position: 'absolute',
-                inset: -8,
-                borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(103,232,249,0.45) 0%, transparent 70%)',
-                animation: 'pulseGlow 2.5s ease-in-out infinite',
-              }}
-            />
-            <MiniDiamond size={56} />
-          </div>
+          <div style={{
+            position: 'absolute', inset: -3, borderRadius: 22,
+            background: 'conic-gradient(from 0deg, #4f46e5, #06b6d4, #10b981, #f59e0b, #ec4899, #a855f7, #4f46e5)',
+            animation: 'rotateBorder 2.8s linear infinite',
+            zIndex: 0,
+          }} />
         )}
 
-        {open && <X size={28} color="#fff" />}
+        {/* Button face */}
+        <div
+          onClick={() => setOpen(o => !o)}
+          style={{
+            position: 'absolute', inset: open ? 0 : 3, borderRadius: open ? 20 : 19,
+            background: open
+              ? 'linear-gradient(135deg,#4338ca,#6d28d9)'
+              : 'linear-gradient(145deg,#1e1b4b 0%,#312e81 40%,#1e1b4b 100%)',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 1,
+            animation: !open ? 'outerGlow 4s ease-in-out infinite' : 'none',
+            transition: 'all .2s ease',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Inner radial gleam */}
+          {!open && (
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: 'inherit',
+              background: 'radial-gradient(ellipse at 35% 30%, rgba(255,255,255,0.18) 0%, transparent 65%)',
+              pointerEvents: 'none',
+            }} />
+          )}
+
+          {/* Corner sparkle stars — only when closed */}
+          {!open && <>
+            <div style={{ position:'absolute', top:5, left:6, fontSize:9, animation:'starPulse 2s ease-in-out infinite', lineHeight:1 }}>✦</div>
+            <div style={{ position:'absolute', top:6, right:7, fontSize:7, animation:'starPulse 2.4s ease-in-out infinite .6s', lineHeight:1, color:'#a5f3fc' }}>✦</div>
+            <div style={{ position:'absolute', bottom:6, left:7, fontSize:7, animation:'starPulse 2.8s ease-in-out infinite 1.1s', lineHeight:1, color:'#f9a8d4' }}>✦</div>
+            <div style={{ position:'absolute', bottom:5, right:6, fontSize:9, animation:'starPulse 2.2s ease-in-out infinite 1.7s', lineHeight:1, color:'#fcd34d' }}>✦</div>
+          </>}
+
+          {/* Diamond or X */}
+          {!open ? (
+            <div style={{ position: 'relative', width: 52, height: 52 }}>
+              {/* Tiny pulse ring around mini-diamond */}
+              <div style={{
+                position: 'absolute', inset: -6, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(168,216,234,0.50) 0%, transparent 68%)',
+                animation: 'pulseGlow 2s ease-in-out infinite',
+              }} />
+              <MiniDiamond size={52} />
+            </div>
+          ) : (
+            <X size={26} color="#fff" />
+          )}
+        </div>
 
         {/* Notification dot */}
         {showNotification && (
-          <div
-            style={{
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: '#ef4444',
-              border: '2px solid #fff',
-            }}
-          />
+          <div style={{
+            position: 'absolute', top: -2, right: -2, zIndex: 2,
+            width: 14, height: 14, borderRadius: '50%',
+            background: '#ef4444', border: '2.5px solid #fff',
+            boxShadow: '0 0 6px rgba(239,68,68,.6)',
+          }} />
         )}
       </div>
     </>
