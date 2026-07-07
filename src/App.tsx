@@ -13,7 +13,7 @@ import './index.css'
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="relative min-h-screen" style={{ background: '#03020a' }}>
+      <div className="relative min-h-screen" style={{ background: '#f8f5f0' }}>
         <SparkleField />
         <div className="relative z-10">
           <Navbar />
@@ -32,9 +32,10 @@ export default function App() {
           position="bottom-right"
           toastOptions={{
             style: {
-              background: 'rgba(10,10,20,0.95)',
-              color: '#e2e8f0',
-              border: '1px solid rgba(168,216,234,0.2)',
+              background: '#fff',
+              color: '#1a1a2e',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 4px 16px rgba(0,0,0,.1)',
             },
           }}
         />
