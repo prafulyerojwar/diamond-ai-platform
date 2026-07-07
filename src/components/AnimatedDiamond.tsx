@@ -1,152 +1,289 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 
-interface GlitterParticle {
-  id: number
-  x: number
-  y: number
-  tx: number
-  ty: number
-  color: string
-  delay: number
-}
+type V3 = [number, number, number]
+type V2 = [number, number]
 
-export default function AnimatedDiamond({ size = 260 }: { size?: number }) {
-  const [particles, setParticles] = useState<GlitterParticle[]>([])
-  const [hue, setHue] = useState(0)
-  const animRef = useRef<number>(0)
+export default function AnimatedDiamond({ size = 320 }: { size?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    let frame = 0
-    const animate = () => {
-      frame++
-      setHue(h => (h + 0.8) % 360)
-      if (frame % 15 === 0) {
-        setParticles(prev => {
-          const next = prev.filter(p => p.id > Date.now() - 1500)
-          const colors = ['#a8d8ea','#d4b8e0','#fff','#ffe4e1','#b8f0d4','#ffd4b8']
-          const newP: GlitterParticle = {
-            id: Date.now() + Math.random(),
-            x: 30 + Math.random() * 40,
-            y: 20 + Math.random() * 60,
-            tx: (Math.random() - 0.5) * 80,
-            ty: -(Math.random() * 60 + 20),
-            color: colors[Math.floor(Math.random() * colors.length)],
-            delay: 0,
-          }
-          return [...next, newP]
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    let animId: number
+    let angle = 0
+    let hue = 0
+
+    // Diamond geometry parameters
+    const N = 8            // sides
+    const R_TABLE = 0.22   // table (top flat) radius
+    const R_GIRDLE = 0.50  // girdle (widest) radius
+    const R_STAR = 0.36    // star facet points (between table and girdle)
+    const Y_TABLE = 0.34   // y of table
+    const Y_CROWN = 0.10   // y of star facet tips
+    const Y_GIRDLE = -0.04 // y of girdle
+    const Y_PAVIL = -0.30  // y of pavilion lower ring
+    const Y_CULET = -0.70  // y of bottom point
+
+    // Generate a ring of vertices
+    function ring(r: number, y: number, n: number, off = 0): V3[] {
+      return Array.from({ length: n }, (_, i) => {
+        const a = (i / n) * Math.PI * 2 + off
+        return [r * Math.cos(a), y, r * Math.sin(a)] as V3
+      })
+    }
+
+    // Base vertex rings (un-rotated)
+    const tblB = ring(R_TABLE, Y_TABLE, N, 0)        // table edge
+    const strB = ring(R_STAR,  Y_CROWN, N, Math.PI/N) // star tips (offset half-step)
+    const grdB = ring(R_GIRDLE, Y_GIRDLE, N, 0)      // girdle
+    const pavB = ring(R_GIRDLE * 0.6, Y_PAVIL, N, Math.PI/N) // lower pavilion ring
+    const culB: V3 = [0, Y_CULET, 0]
+
+    // 3D math helpers
+    const rotY = (v: V3, a: number): V3 => {
+      const c = Math.cos(a), s = Math.sin(a)
+      return [v[0]*c + v[2]*s, v[1], -v[0]*s + v[2]*c]
+    }
+    const rotX = (v: V3, a: number): V3 => {
+      const c = Math.cos(a), s = Math.sin(a)
+      return [v[0], v[1]*c - v[2]*s, v[1]*s + v[2]*c]
+    }
+    const sub = (a: V3, b: V3): V3 => [a[0]-b[0], a[1]-b[1], a[2]-b[2]]
+    const cross = (a: V3, b: V3): V3 => [
+      a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0],
+    ]
+    const dot = (a: V3, b: V3) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2]
+    const len = (v: V3) => Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])
+    const norm = (v: V3): V3 => { const l = len(v)||1; return [v[0]/l, v[1]/l, v[2]/l] }
+    const centroid = (pts: V3[]): V3 => {
+      const s: V3 = [0,0,0]
+      pts.forEach(p => { s[0]+=p[0]; s[1]+=p[1]; s[2]+=p[2] })
+      return [s[0]/pts.length, s[1]/pts.length, s[2]/pts.length]
+    }
+    const faceNorm = (pts: V3[]): V3 => norm(cross(sub(pts[1], pts[0]), sub(pts[2], pts[0])))
+
+    // Perspective projection
+    const proj = (v: V3): V2 => {
+      const fov = size * 0.52
+      const z = v[2] + 2.8
+      return [size/2 + v[0]*fov/z, size/2 - v[1]*fov/z]
+    }
+
+    // Light direction (upper-front-left)
+    const LIGHT: V3 = norm([0.4, 0.9, 0.7])
+    const VIEW:  V3 = [0, 0, 1]
+
+    // Prismatic color palette
+    const PRISM = [
+      [220, 240, 255], // icy white-blue
+      [168, 216, 234], // cyan
+      [180, 200, 255], // blue
+      [212, 184, 224], // purple
+      [255, 200, 230], // pink
+      [255, 230, 190], // warm gold
+      [200, 255, 220], // mint
+      [255, 255, 255], // white
+    ]
+
+    function drawStar(cx: number, cy: number, r: number) {
+      ctx.beginPath()
+      for (let k = 0; k < 8; k++) {
+        const rad = k % 2 === 0 ? r : r * 0.4
+        const a = k * Math.PI / 4 - Math.PI / 2
+        k === 0 ? ctx.moveTo(cx + rad*Math.cos(a), cy + rad*Math.sin(a))
+                : ctx.lineTo(cx + rad*Math.cos(a), cy + rad*Math.sin(a))
+      }
+      ctx.closePath()
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, size, size)
+
+      // Transform all rings
+      const TILT = 0.30
+      const T = (v: V3): V3 => rotX(rotY(v, angle), TILT)
+
+      const tbl = tblB.map(T)
+      const str = strB.map(T)
+      const grd = grdB.map(T)
+      const pav = pavB.map(T)
+      const cul = T(culB)
+
+      // Collect all faces
+      type DrawFace = {
+        pts3d: V3[]
+        pts2d: V2[]
+        z: number
+        ci: number  // color index
+        brightness: number
+      }
+
+      const faces: DrawFace[] = []
+      const push = (pts3d: V3[], ci: number) => {
+        const n = faceNorm(pts3d)
+        const ndotl = Math.max(0, dot(n, LIGHT))
+        const ndotv = dot(n, VIEW)
+        const backface = ndotv < 0
+        const brightness = backface
+          ? 0.10 + ndotl * 0.15
+          : 0.30 + ndotl * 0.70
+        faces.push({
+          pts3d, pts2d: pts3d.map(proj),
+          z: centroid(pts3d)[2],
+          ci, brightness,
         })
       }
-      animRef.current = requestAnimationFrame(animate)
+
+      // ── Table (octagon top face) ──
+      push([...tbl], 7)
+
+      // ── Crown: table → star tip → girdle  (kite / star facets) ──
+      for (let i = 0; i < N; i++) {
+        const j = (i + 1) % N
+        // Upper-crown triangle: tbl[i]  - str[i] - tbl[j]  (star facet)
+        push([tbl[i], str[i], tbl[j]], (i) % 8)
+        // Lower-crown kite:     str[i] - grd[i]  - grd[j] - tbl[j] won't work cleanly
+        // Split: str[i]-grd[i]-tbl[j] and grd[i]-grd[j]-tbl[j]... better:
+        // Bezel facet: tbl[j] - str[i] - grd[i]
+        push([tbl[j], str[i], grd[i]], (i + 3) % 8)
+        // Girdle step: grd[i] - grd[j] - tbl[j]  → actually lower-girdle triangle
+        push([grd[i], grd[j], str[i]], (i + 1) % 8)
+      }
+
+      // ── Pavilion: girdle → lower ring → culet ──
+      for (let i = 0; i < N; i++) {
+        const j = (i + 1) % N
+        // Upper pavilion quad: grd[i] grd[j] pav[i]
+        push([grd[i], grd[j], pav[i]], (i + 2) % 8)
+        push([grd[j], pav[j], pav[i]], (i + 5) % 8)
+        // Lower pavilion triangle to culet
+        push([pav[i], pav[j], cul], (i + 4) % 8)
+      }
+
+      // Sort back-to-front
+      faces.sort((a, b) => a.z - b.z)
+
+      // Glow background
+      const glow = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size*0.5)
+      const ch = (hue + 180) % 360
+      glow.addColorStop(0, `hsla(${hue},80%,85%,0.10)`)
+      glow.addColorStop(0.5, `hsla(${ch},70%,80%,0.05)`)
+      glow.addColorStop(1, 'transparent')
+      ctx.fillStyle = glow
+      ctx.fillRect(0, 0, size, size)
+
+      // Draw faces
+      faces.forEach(face => {
+        if (face.pts2d.length < 3) return
+
+        const [r, g, b] = PRISM[(face.ci + Math.floor(hue / 45)) % 8]
+        const bri = face.brightness
+        const fr = Math.min(255, Math.round(r * bri + 40 * bri))
+        const fg = Math.min(255, Math.round(g * bri))
+        const fb = Math.min(255, Math.round(b * bri))
+        const alpha = 0.55 + bri * 0.35
+
+        const cpt = centroid(face.pts3d)
+        const cp2 = proj(cpt)
+
+        // Face gradient
+        const gr = ctx.createRadialGradient(cp2[0]-8, cp2[1]-8, 2, cp2[0], cp2[1], 55)
+        gr.addColorStop(0, `rgba(${Math.min(255,fr+70)},${Math.min(255,fg+70)},${Math.min(255,fb+70)},${alpha})`)
+        gr.addColorStop(1, `rgba(${fr},${fg},${fb},${alpha * 0.5})`)
+
+        ctx.beginPath()
+        ctx.moveTo(face.pts2d[0][0], face.pts2d[0][1])
+        face.pts2d.slice(1).forEach(p => ctx.lineTo(p[0], p[1]))
+        ctx.closePath()
+        ctx.fillStyle = gr
+        ctx.fill()
+        ctx.strokeStyle = `rgba(255,255,255,${0.15 + bri * 0.3})`
+        ctx.lineWidth = 0.7
+        ctx.stroke()
+
+        // Specular highlight flash
+        if (bri > 0.85) {
+          ctx.beginPath()
+          ctx.moveTo(face.pts2d[0][0], face.pts2d[0][1])
+          face.pts2d.slice(1).forEach(p => ctx.lineTo(p[0], p[1]))
+          ctx.closePath()
+          const flash = ctx.createRadialGradient(cp2[0]-10, cp2[1]-10, 0, cp2[0], cp2[1], 28)
+          flash.addColorStop(0, `rgba(255,255,255,${(bri-0.85)*3})`)
+          flash.addColorStop(1, 'rgba(255,255,255,0)')
+          ctx.fillStyle = flash
+          ctx.fill()
+        }
+      })
+
+      // Draw sparkle star at the very top of the diamond
+      const topY = tbl.reduce((minY, v) => {
+        const py = proj(v)[1]
+        return py < minY ? py : minY
+      }, Infinity)
+
+      ctx.save()
+      ctx.translate(size / 2, topY - 4)
+      ctx.rotate(angle * 3)
+      const sparkR = 7 + 3 * Math.sin(angle * 4)
+      drawStar(0, 0, sparkR)
+      const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, sparkR)
+      sg.addColorStop(0, 'rgba(255,255,255,0.95)')
+      sg.addColorStop(1, 'rgba(168,216,234,0)')
+      ctx.fillStyle = sg
+      ctx.fill()
+      ctx.restore()
+
+      // Reflection ellipse at bottom
+      const botY = proj(cul)[1]
+      ctx.save()
+      ctx.globalAlpha = 0.18
+      ctx.beginPath()
+      ctx.ellipse(size/2, botY + 12, size*0.22, 8, 0, 0, Math.PI*2)
+      const refGrad = ctx.createRadialGradient(size/2, botY+12, 0, size/2, botY+12, size*0.22)
+      refGrad.addColorStop(0, `hsla(${hue},80%,80%,0.7)`)
+      refGrad.addColorStop(1, 'transparent')
+      ctx.fillStyle = refGrad
+      ctx.fill()
+      ctx.restore()
     }
-    animRef.current = requestAnimationFrame(animate)
-    return () => cancelAnimationFrame(animRef.current)
-  }, [])
 
-  const s = size
-  const cx = s / 2
-  const cy = s / 2
-
-  // Diamond facet coordinates (percentage of size)
-  const facets = {
-    // Table (top flat)
-    table: [
-      [cx - s*.18, cy - s*.08],
-      [cx + s*.18, cy - s*.08],
-      [cx + s*.12, cy - s*.22],
-      [cx - s*.12, cy - s*.22],
-    ],
-    // Upper left facets
-    upperLeft1: [[cx, cy - s*.32], [cx - s*.12, cy - s*.22], [cx - s*.18, cy - s*.08]],
-    upperRight1: [[cx, cy - s*.32], [cx + s*.12, cy - s*.22], [cx + s*.18, cy - s*.08]],
-    // Lower girdle facets
-    lowerLeft: [[cx - s*.18, cy - s*.08], [cx - s*.28, cy + s*.05], [cx, cy + s*.38]],
-    lowerRight: [[cx + s*.18, cy - s*.08], [cx + s*.28, cy + s*.05], [cx, cy + s*.38]],
-    lowerCenter: [[cx - s*.18, cy - s*.08], [cx + s*.18, cy - s*.08], [cx, cy + s*.38]],
-    // Girdle sides
-    girdleLeft: [[cx - s*.18, cy - s*.08], [cx - s*.28, cy + s*.05], [cx - s*.18, cy + s*.05]],
-    girdleRight: [[cx + s*.18, cy - s*.08], [cx + s*.28, cy + s*.05], [cx + s*.18, cy + s*.05]],
-  }
-
-  const pts = (arr: number[][]) => arr.map(([x, y]) => `${x},${y}`).join(' ')
-
-  const light1 = `hsl(${hue}, 70%, 80%)`
-  const light2 = `hsl(${(hue + 120) % 360}, 80%, 85%)`
-  const light3 = `hsl(${(hue + 240) % 360}, 90%, 90%)`
-  const dark1  = `hsl(${(hue + 60) % 360}, 50%, 30%)`
-  const dark2  = `hsl(${(hue + 180) % 360}, 60%, 20%)`
+    const loop = () => {
+      angle += 0.011
+      hue = (hue + 0.5) % 360
+      draw()
+      animId = requestAnimationFrame(loop)
+    }
+    animId = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(animId)
+  }, [size])
 
   return (
-    <div className="relative" style={{ width: s, height: s }}>
-      {/* Glow rings */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="absolute rounded-full animate-pulse"
-          style={{ width: s * 1.4, height: s * 1.4, background: `radial-gradient(ellipse at center, rgba(168,216,234,0.18) 0%, transparent 70%)` }} />
-        <div className="absolute rounded-full"
-          style={{ width: s * 1.1, height: s * 1.1, background: `radial-gradient(ellipse at center, rgba(212,184,224,0.12) 0%, transparent 70%)`, animation: 'pulseGlow 2s ease-in-out infinite' }} />
-      </div>
-
-      {/* Main rotating diamond */}
-      <div className="absolute inset-0 flex items-center justify-center" style={{ animation: 'rotateDiamond 8s linear infinite', transformStyle: 'preserve-3d', perspective: '600px' }}>
-        <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`} style={{ filter: `drop-shadow(0 0 20px rgba(168,216,234,0.6)) drop-shadow(0 0 40px rgba(168,216,234,0.3))` }}>
-          <defs>
-            <radialGradient id="tableGrad" cx="50%" cy="50%">
-              <stop offset="0%" stopColor="#fff" stopOpacity="0.95" />
-              <stop offset="100%" stopColor={light2} stopOpacity="0.8" />
-            </radialGradient>
-            <linearGradient id="leftGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={light1} stopOpacity="0.9" />
-              <stop offset="100%" stopColor={dark1} stopOpacity="0.8" />
-            </linearGradient>
-            <linearGradient id="rightGrad" x1="100%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={light3} stopOpacity="0.85" />
-              <stop offset="100%" stopColor={dark2} stopOpacity="0.75" />
-            </linearGradient>
-          </defs>
-
-          {/* Star sparkle at top */}
-          <polygon points={`${cx},${cy - s*.38} ${cx+4},${cy - s*.3} ${cx+s*.04},${cy - s*.32} ${cx+3},${cy - s*.26} ${cx},${cy - s*.22} ${cx-3},${cy - s*.26} ${cx-s*.04},${cy - s*.32} ${cx-4},${cy - s*.3}`}
-            fill="white" opacity="0.9" />
-
-          {/* Table */}
-          <polygon points={pts(facets.table)} fill="url(#tableGrad)" stroke="rgba(255,255,255,0.6)" strokeWidth="0.5" />
-
-          {/* Crown facets */}
-          <polygon points={pts(facets.upperLeft1)} fill={light1} fillOpacity="0.7" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5" />
-          <polygon points={pts(facets.upperRight1)} fill={light3} fillOpacity="0.75" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5" />
-
-          {/* Pavilion */}
-          <polygon points={pts(facets.lowerLeft)} fill="url(#leftGrad)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" />
-          <polygon points={pts(facets.lowerRight)} fill="url(#rightGrad)" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" />
-          <polygon points={pts(facets.lowerCenter)} fill={dark1} fillOpacity="0.5" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-
-          {/* Inner reflection lines */}
-          <line x1={cx} y1={cy - s*.22} x2={cx} y2={cy + s*.38} stroke="rgba(255,255,255,0.15)" strokeWidth="0.5" />
-          <line x1={cx - s*.18} y1={cy - s*.08} x2={cx + s*.18} y2={cy - s*.08} stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-
-          {/* Highlight flash */}
-          <ellipse cx={cx - s*.05} cy={cy - s*.12} rx={s*.04} ry={s*.02} fill="white" opacity="0.8" transform={`rotate(-30,${cx - s*.05},${cy - s*.12})`} />
-        </svg>
-      </div>
-
-      {/* Glitter particles */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {particles.map(p => (
-          <div key={p.id} className="absolute rounded-full"
-            style={{
-              left: `${p.x}%`, top: `${p.y}%`,
-              width: 4, height: 4,
-              background: p.color,
-              boxShadow: `0 0 6px ${p.color}`,
-              animation: `glitterParticle 1.2s ease-out forwards`,
-              '--tx': `${p.tx}px`, '--ty': `${p.ty}px`,
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
-
-      {/* Bottom reflection */}
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2"
-        style={{ width: s * 0.6, height: 20, background: 'radial-gradient(ellipse at center, rgba(168,216,234,0.4) 0%, transparent 70%)', filter: 'blur(8px)' }} />
+    <div style={{ position: 'relative', width: size, height: size }}>
+      {/* Pulsing glow rings */}
+      <div style={{
+        position: 'absolute', inset: -20,
+        borderRadius: '50%',
+        background: 'radial-gradient(ellipse at center, rgba(168,216,234,0.18) 0%, transparent 65%)',
+        animation: 'pulseGlow 3s ease-in-out infinite',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', inset: 10,
+        borderRadius: '50%',
+        background: 'radial-gradient(ellipse at center, rgba(212,184,224,0.10) 0%, transparent 65%)',
+        animation: 'pulseGlow 4s ease-in-out infinite reverse',
+        pointerEvents: 'none',
+      }} />
+      <canvas
+        ref={canvasRef}
+        width={size}
+        height={size}
+        style={{
+          position: 'relative', zIndex: 1,
+          filter: 'drop-shadow(0 0 28px rgba(168,216,234,0.75)) drop-shadow(0 0 60px rgba(168,216,234,0.35))',
+        }}
+      />
     </div>
   )
 }
